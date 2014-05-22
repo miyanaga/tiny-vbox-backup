@@ -34,7 +34,7 @@ sub command {
     $res;
 }
 
-sub listvms {
+sub list_vms {
     my $option = shift || 'vms';
     my %vms = map {
         /^"(.+?)"\s+{(.+?)}/;
@@ -46,7 +46,7 @@ sub listvms {
     %vms;
 }
 
-sub backupvm {
+sub backup_vm {
     my $running = shift;
     my $vm = shift;
 
@@ -54,23 +54,45 @@ sub backupvm {
 
     my $ovf = File::Spec->catdir($opts{t}, "$vm.ovf");
     $ovfs{$vm} = $ovf;
+    unlink $ovf if -e $ovf;
     command($opts{v}, 'export', $vm, '-o', $ovf);
 
     command($opts{v}, 'startvm', $vm) if $running;
 }
 
-my %stopped = listvms('vms');
-my %running = listvms('runningvms');
+sub tmp_files {
+    my $mode = shift || 'rm';
+
+    opendir(my $dh, $opts{t});
+    while(my $f = readdir($dh)) {
+        next if $f eq '.' or $f eq '..';
+        my $src = File::Spec->catdir($opts{t}, $f);
+        my $dest = File::Spec->catdir($opts{d}, $f);
+        next if -d $f;
+
+        if ($mode eq 'move') {
+            print STDERR "Moving $src to $dest\n";
+            move $src, $dest;
+        } else {
+            print STDERR "Removing $src\n";
+            unlink $src if -e $src;
+        }
+    }
+    close($dh);
+}
+
+my %stopped = list_vms('vms');
+my %running = list_vms('runningvms');
 
 for my $running (keys %running) {
     delete $stopped{$running};
 }
 
-backupvm(0, $_) foreach (keys %stopped);
-backupvm(1, $_) foreach (keys %running);
+tmp_files('rm');
+backup_vm(0, $_) foreach (keys %stopped);
+backup_vm(1, $_) foreach (keys %running);
 
-foreach my $vm (keys %ovfs) {
-    my $dest = File::Spec->catdir($opts{d}, "$vm.ovf");
-    print STDERR "Coping to $dest\n";
-    move $ovfs{$vm}, $dest;
-}
+exit if $opts{t} eq $opts{d};
+
+tmp_files('move');
+
