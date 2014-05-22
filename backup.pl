@@ -4,9 +4,10 @@ use strict;
 use Getopt::Std;
 use Data::Dumper;
 use File::Spec;
+use File::Copy 'move';
 
 my %opts;
-getopts("vdt", \%opts);
+getopts("vdmt", \%opts);
 $opts{v} ||= "VBoxManage";
 $opts{t} ||= "./tmp";
 $opts{m} ||= 0;
@@ -40,7 +41,7 @@ sub listvms {
         $1 => $2;
     } grep {
         /^"(.+?)"\s+{(.+?)}/;
-    } split /\r?\n/, command($opts{v}, 'list' $option);
+    } split( /\r?\n/, command($opts{v}, 'list', $option) );
 
     %vms;
 }
@@ -51,7 +52,7 @@ sub backupvm {
 
     command($opts{v}, 'controlvm', $vm, "savestate") if $running;
 
-    my $ovf = FileSpec->catdir($opts{t}, "$vm.ovf");
+    my $ovf = File::Spec->catdir($opts{t}, "$vm.ovf");
     $ovfs{$vm} = $ovf;
     command($opts{v}, 'export', $vm, '-o', $ovf);
 
@@ -68,3 +69,8 @@ for my $running (keys %running) {
 backupvm(0, $_) foreach (keys %stopped);
 backupvm(1, $_) foreach (keys %running);
 
+foreach my $vm (keys %ovfs) {
+    my $dest = File::Spec->catdir($opts{d}, "$vm.ovf");
+    print STDERR "Coping to $dest\n";
+    move $ovfs{$vm}, $dest;
+}
