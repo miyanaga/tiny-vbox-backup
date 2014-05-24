@@ -7,10 +7,10 @@ use File::Spec;
 use File::Copy 'move';
 
 my %opts;
-getopts("vdmt", \%opts);
-$opts{v} ||= "VBoxManage";
+getopts("mb:d:t:", \%opts);
+$opts{b} ||= "VBoxManage";
 $opts{t} ||= "./tmp";
-$opts{m} ||= 0;
+$opts{v} ||= 0;
 $opts{d} ||= "./dest";
 
 my $result;
@@ -22,14 +22,14 @@ sub command {
     } @_ );
 
     my $starts = time;
-    print STDERR $command, "\n" if $opts{m};
+    print STDERR $command, "\n" if $opts{v};
 
     my $res = `$command`;
 
     my $duration = time - $starts;
-    print STDERR "Takes $duration sec.\n\n" if $opts{m};
+    print STDERR "Takes $duration sec.\n\n" if $opts{v};
 
-    print STDERR $res, "\n\n" if $opts{m};
+    print STDERR $res, "\n\n" if $opts{v};
 
     $res;
 }
@@ -41,7 +41,7 @@ sub list_vms {
         $1 => $2;
     } grep {
         /^"(.+?)"\s+{(.+?)}/;
-    } split( /\r?\n/, command($opts{v}, 'list', $option) );
+    } split( /\r?\n/, command($opts{b}, 'list', $option) );
 
     %vms;
 }
@@ -50,14 +50,14 @@ sub backup_vm {
     my $running = shift;
     my $vm = shift;
 
-    command($opts{v}, 'controlvm', $vm, "savestate") if $running;
+    command($opts{b}, 'controlvm', $vm, "savestate") if $running;
 
     my $ovf = File::Spec->catdir($opts{t}, "$vm.ovf");
     $ovfs{$vm} = $ovf;
     unlink $ovf if -e $ovf;
-    command($opts{v}, 'export', $vm, '-o', $ovf);
+    command($opts{b}, 'export', $vm, '-o', $ovf);
 
-    command($opts{v}, 'startvm', $vm) if $running;
+    command($opts{b}, 'startvm', $vm) if $running;
 }
 
 sub tmp_files {
