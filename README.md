@@ -1,10 +1,9 @@
 # Micro VirtualBox VMs backup script
 
-Very simple backup script.
+Very simple Vistual Machines backup script.
 
-    perl backup.pl [-m] [-t Temporary dir path] [-v VBoxMange path] [-d Destination dir path]
+    perl backup.pl [-v] [-t Temporary dir path] [-b VBoxMange path] [-d Destination dir path] [-x Excluding VMs]
 
-Debug(Verbose) option is '-m'.
 
 To use simply:
 
