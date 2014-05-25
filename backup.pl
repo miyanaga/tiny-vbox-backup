@@ -7,11 +7,14 @@ use File::Spec;
 use File::Copy 'move';
 
 my %opts;
-getopts("mb:d:t:", \%opts);
+getopts("vb:d:t:x:", \%opts);
 $opts{b} ||= "VBoxManage";
 $opts{t} ||= "./tmp";
 $opts{v} ||= 0;
 $opts{d} ||= "./dest";
+$opts{x} ||= "";
+
+my @exclude = split /\s*,\s/, $opts{x};
 
 my $result;
 my %ovfs;
@@ -42,6 +45,8 @@ sub list_vms {
     } grep {
         /^"(.+?)"\s+{(.+?)}/;
     } split( /\r?\n/, command($opts{b}, 'list', $option) );
+
+    delete $vms{$_} foreach @exclude;
 
     %vms;
 }
