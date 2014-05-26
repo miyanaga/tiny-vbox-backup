@@ -2,7 +2,7 @@
 
 Very simple Vistual Machines backup script.
 
-    perl backup.pl [-v] [-t Temporary dir path] [-b VBoxMange path] [-d Destination dir path] [-x Excluding VMs]
+    perl backup.pl [-v] [-r] [-t Temporary dir path] [-b VBoxMange path] [-d Destination dir path] [-x Excluding VMs]
 
 
 To use simply:
@@ -11,6 +11,7 @@ To use simply:
 
 ## Memorandum
 
+* -v is verbose and -r is dryrun.
 * This script export all VMs as OVF to temporary dir.
 * Then move them to backup destination dir.
 * The script saves state and restarts running VMs arround exporting.

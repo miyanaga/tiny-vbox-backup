@@ -7,19 +7,21 @@ use File::Spec;
 use File::Copy 'move';
 
 my %opts;
-getopts("vb:d:t:x:", \%opts);
+getopts("vrb:d:t:x:", \%opts);
 $opts{b} ||= "VBoxManage";
 $opts{t} ||= "./tmp";
 $opts{v} ||= 0;
 $opts{d} ||= "./dest";
 $opts{x} ||= "";
+$opts{r} ||= 0;
 
-my @exclude = split /\s*,\s/, $opts{x};
+my @exclude = split /\s*,\s*/, $opts{x};
 
 my $result;
 my %ovfs;
 
 sub command {
+    my $dryrun = shift;
     my $command = join( ' ', map {
         /\s/ ? qq{"$_"} : $_
     } @_ );
@@ -27,14 +29,16 @@ sub command {
     my $starts = time;
     print STDERR $command, "\n" if $opts{v};
 
-    my $res = `$command`;
+    unless ( $dryrun ) {
+        my $res = `$command`;
 
-    my $duration = time - $starts;
-    print STDERR "Takes $duration sec.\n\n" if $opts{v};
+        my $duration = time - $starts;
+        print STDERR "Takes $duration sec.\n\n" if $opts{v};
 
-    print STDERR $res, "\n\n" if $opts{v};
+        print STDERR $res, "\n\n" if $opts{v};
 
-    $res;
+        return $res;
+    }
 }
 
 sub list_vms {
@@ -44,9 +48,11 @@ sub list_vms {
         $1 => $2;
     } grep {
         /^"(.+?)"\s+{(.+?)}/;
-    } split( /\r?\n/, command($opts{b}, 'list', $option) );
+    } split( /\r?\n/, command(0, $opts{b}, 'list', $option) );
 
     delete $vms{$_} foreach @exclude;
+
+    print STDERR $option, ":", join(",", keys %vms), "?n";
 
     %vms;
 }
@@ -55,14 +61,14 @@ sub backup_vm {
     my $running = shift;
     my $vm = shift;
 
-    command($opts{b}, 'controlvm', $vm, "savestate") if $running;
+    command($opts{r}, $opts{b}, 'controlvm', $vm, "savestate") if $running;
 
     my $ovf = File::Spec->catdir($opts{t}, "$vm.ovf");
     $ovfs{$vm} = $ovf;
     unlink $ovf if -e $ovf;
-    command($opts{b}, 'export', $vm, '-o', $ovf);
+    command($opts{r}, $opts{b}, 'export', $vm, '-o', $ovf);
 
-    command($opts{b}, 'startvm', $vm) if $running;
+    command($opts{r}, $opts{b}, 'startvm', $vm) if $running;
 }
 
 sub tmp_files {
@@ -93,11 +99,11 @@ for my $running (keys %running) {
     delete $stopped{$running};
 }
 
-tmp_files('rm');
+tmp_files('rm') unless $opts{r};
 backup_vm(0, $_) foreach (keys %stopped);
 backup_vm(1, $_) foreach (keys %running);
 
 exit if $opts{t} eq $opts{d};
 
-tmp_files('move');
+tmp_files('move') unless $opts{r};
 
